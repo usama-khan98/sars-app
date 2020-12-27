@@ -2,6 +2,7 @@ const auth = require("../middleware/auth");
 const bcrypt = require("bcrypt");
 const {Student} = require("../models/studentModel");
 const {Synopsis} = require('../models/synopsisModel');
+const {Presentation}=require("../models/presentationModel");
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const config = require("config");
@@ -188,6 +189,33 @@ router.post('/getById',(req,res)=>{
 })
 
 
+router.post('/presentations',(req,res)=>{
+  Presentation.find({student:req.body.id}).populate('supervisor').populate('student').populate('synopsis')
+  .then(result=>{
+    res.status(200).json({
+      presentationList:result
+    })
+  })
+  .catch(err=>{
+    res.status(404).json({
+      error:err
+    })
+  })
+});
+
+router.post('/getSynopsisbyId',(req,res)=>{
+  Synopsis.find({student:req.body.id}).populate('student').populate('commenents').populate('supervisor')
+  .then(result=>{
+    res.status(200).json({
+      data:result
+    })
+  })
+  .catch(err=>{
+    res.status(404).json({
+      error:err
+    })
+  })
+});
 
 
 router.post('/updateProfile',upload.single('profilePicture'), (req,res)=>{

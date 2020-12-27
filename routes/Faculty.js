@@ -2,6 +2,9 @@ const auth = require("../middleware/auth");
 const bcrypt = require("bcrypt");
 const {Faculty }= require("../models/facultyModel");
 const {Synopsis} = require('../models/synopsisModel');
+const {Presentation}=require("../models/presentationModel");
+const {ReviewTask}=require('../models/reviewTaskModel');
+const {Comments}=require('../models/reviewCommentModel');
 const {Token}=require('../models/token');
 const express = require("express");
 const jwt = require("jsonwebtoken");
@@ -157,6 +160,86 @@ router.post('/signin',(req,res)=>{
 
 });
 
+
+router.get('/getAll',(req,res)=>{
+
+  Faculty.find().exec()
+  .then(facultylist=>{
+    res.status(200).json({
+
+      list:facultylist
+  })
+  }).catch(err=>{
+    res.status(500).json({
+        error:err
+    })
+});
+});
+
+router.post('/acknowledgeSynopsis',(req,res)=>{
+      
+      Synopsis.findById(req.body.synopsisId)
+      .then(synopsis=>{
+        synopsis.status="Registered";
+        synopsis.save()
+        .then(result=>{
+          res.status(200).json({
+
+            message:"Synopsis Status Changed"
+        })
+        })
+        .catch(err=>{
+          res.status(500).json({
+            error:err
+        })
+        })
+      })
+      .catch(err=>{
+        res.status(500).json({
+          error:err
+      })
+      })
+});
+
+
+router.post('/submitReviewComment',upload1.single('commentFile'),(req,res)=>{
+    const comment= new Comments({
+      ReviewTask:req.body.reviewTaskId,
+      filepath:(req.file)?req.file.path:'',
+      commenents:(req.body.commenent)? req.body.commenent:'',
+      status:'Submitted'
+    })
+
+    comment.save()
+    .then(result=>{
+        ReviewTask.findById(req.body.reviewTaskId)
+        .then(task=>{
+            task.commenents.push(result._id);
+            task.status="Submitted";
+            task.save()
+            .then(result2=>{
+                res.status(200).json({
+                  message:"Comment submitted success"
+                })
+            })
+            .catch(err=>{
+              res.status(404).json({
+                error:err
+              })
+            })
+        }).catch(err=>{
+          res.status(404).json({
+            error:err
+          })
+        })
+    })
+    .catch(err=>{
+      res.status(404).json({
+        error:err
+      })
+    })
+});
+
 router.post('/confirmRegistrtion',(req,res)=>{
   Token.findOne({token:req.body.token})
   .then(result=>{
@@ -247,6 +330,7 @@ router.post('/updateProfile',upload.single('profilePicture'), (req,res)=>{
 
 });
 
+
 router.post('/getProfile',(req,res)=>{
     console.log(req.body.id);
     Faculty.findById(req.body.id)
@@ -261,6 +345,26 @@ router.post('/getProfile',(req,res)=>{
         error:err
       })
     })
+
+})
+
+
+router.post('/getStudents', (req,res)=>{
+  console.log(req.body.id);
+  Synopsis.find({supervisor:req.body.id}).populate('student')
+  .then(synopsis=>{
+    var synopsisdata=[];
+    console.log(synopsis);
+    synopsisdata.push(synopsis);
+    res.status(200).json({
+      data:synopsisdata
+    })
+  })
+  .catch(err=>{
+    res.status(400).json({
+      error:err
+    })
+  })
 
 })
 
@@ -318,6 +422,67 @@ router.get('/getAllSupervisor',(req,res)=>{
     })
 });
 });
+
+
+
+router.post('/getReviewTasks',(req,res)=>{
+  console.log(req.body.id);
+  ReviewTask.find({reviewer:req.body.id}).populate('synopsis').populate('commenents')
+  .then(programsList=>{
+    res.status(200).json({
+
+      list:programsList
+  })
+  }).catch(err=>{
+    res.status(500).json({
+        error:err
+    })
+});
+});
+
+router.post('/getbyId',(req,res)=>{
+  Synopsis.find({supervisor:req.body.id}).populate('student').populate('commenents')
+  .then(result=>{
+    res.status(200).json({
+      data:result
+    })
+  })
+  .catch(err=>{
+    res.status(404).json({
+      error:err
+    })
+  })
+});
+
+router.post('/presentations',(req,res)=>{
+  Presentation.find({supervisor:req.body.id}).populate('supervisor').populate('student').populate('synopsis')
+  .then(result=>{
+    res.status(200).json({
+      presentationList:result
+    })
+  })
+  .catch(err=>{
+    res.status(404).json({
+      error:err
+    })
+  })
+});
+
+router.post('/getCommentsbyId',(req,res)=>{
+  Comments.findById(req.body.id)
+  .then(result=>{
+    res.status(200).json({
+      comment:result
+    })
+  })
+  .catch(err=>{
+    res.status(404).json({
+      error:err
+    })
+  })
+});
+
+
 
 
 module.exports = router;
